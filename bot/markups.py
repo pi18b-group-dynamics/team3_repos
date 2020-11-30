@@ -29,8 +29,10 @@ def task_menu(task):
 
     remind = types.InlineKeyboardButton(button_text['remind'],
                                         callback_data=inline_conf.task_remind + 'remind_' + str(task['id']))
+    # tags = types.InlineKeyboardButton(button_text['tags'],
+    #                                   callback_data=inline_conf.task_tags + 'tags_' + str(task['id']))
     tags = types.InlineKeyboardButton(button_text['tags'],
-                                      callback_data=inline_conf.task_tags + 'tags_' + str(task['id']))
+                                      callback_data=inline_conf.task + 'tags_' + str(task['id']))
     if task['active']:
         closed = types.InlineKeyboardButton(button_text['closed'],
                                             callback_data=inline_conf.task + 'closed_' + str(task['id']))
@@ -48,6 +50,27 @@ def task_menu(task):
     inline_key.row(closed, invite)
     inline_key.row(remind, tags)
     inline_key.row(delete)
+    inline_key.row(back)
+
+    return inline_key
+
+
+def all_tags(all_tags):
+    inline_key = types.InlineKeyboardMarkup()
+    for data in all_tags:
+        tag = types.InlineKeyboardButton(data['name'], callback_data=inline_conf.tag + 'view_' + str(data['id']))
+        inline_key.row(tag)
+    tag = types.InlineKeyboardButton('➕ Новый тег ➕', callback_data=inline_conf.tag + 'add_0')
+    inline_key.row(tag)
+    return inline_key
+
+
+def get_tag_page(tag_id):
+    inline_key = types.InlineKeyboardMarkup()
+    edit = types.InlineKeyboardButton(button_text['edit'], callback_data=inline_conf.tag + 'edit_' + str(tag_id))
+    delete = types.InlineKeyboardButton(button_text['delete'], callback_data=inline_conf.tag + 'delete_' + str(tag_id))
+    back = types.InlineKeyboardButton(button_text['to_home'], callback_data=inline_conf.tag + 'back_' + str(tag_id))
+    inline_key.row(edit, delete)
     inline_key.row(back)
 
     return inline_key
@@ -99,6 +122,7 @@ def create_timer_button():
     markup_row.row(button_text['closed'], button_text['cancel'])
 
     return markup_row
+
 
 def create_custom_button(button_name):
     markup_row = types.ReplyKeyboardMarkup(resize_keyboard=True)
