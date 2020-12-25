@@ -11,6 +11,8 @@ import config_inline as inline_conf
 import markups as mark_conf
 from config_text import msg_text, button_text, create_task_text, create_tag_text, timer_task
 
+import base64
+
 bot = telebot.TeleBot(config.BOT_TOKEN)
 calendar_1 = CallbackData("calendar_1", "action", "year", "month", "day")
 
@@ -79,6 +81,14 @@ def message_text_handler(message):
         msg = bot.send_message(message.from_user.id, msg_text['input_fullname'],
                                reply_markup=mark_conf.create_custom_button(button_text['cancel']))
         bot.register_next_step_handler(msg, input_fullname)
+    elif message.text == button_text['statistics']:
+        statistics = util.get_statistics()
+        bot.send_message(message.from_user.id, f'Всего напоминаний: {statistics[0]}\nВыполненных: {statistics[1]}\n'
+                                               f'Невыполненных: {statistics[2]}\n', reply_markup=mark_conf.menu())
+    elif message.text == button_text['rating']:
+        rating = util.personal_rating()
+        bot.send_message(message.from_user.id, f'Всего напоминаний: {rating[0]}\nВыполненных: {rating[1]}\n'
+                                               f'Просроченных: {rating[2]}\n', reply_markup=mark_conf.menu())
     else:
         bot.send_message(message.from_user.id, msg_text['restart_system'], reply_markup=mark_conf.menu())
 
@@ -170,8 +180,10 @@ def task_edit(call):
         bot.send_message(call.from_user.id, 'Напоминалка удалено ;)')
 
     elif res[1] == 'invite':
-        # TODO доделать интеграцию с гугл диском или др. сервисами
+        link = f'https://t.me/bot?start={create_referral_link(task_id)}'
+        bot.send_message(call.from_user_id, f'{msg_text["invite_link"]}{link}')
         return
+
     elif res[1] == 'back':
         bot.send_message(call.from_user.id, msg_text['back'], parse_mode='HTML')
         return
@@ -397,6 +409,11 @@ def time_plus(time, timedelta):
     end = start + timedelta
     return end.time()
 
+def create_referral_link(task_id):
+    return base64.b64encode(task_id.encode('UTF-8')).decode('UTF-8')
+
+def decode_referral_link(link):
+    return base64.b64encode(link.encode('UTF-8')).decode('UTF-8')
 
 if __name__ == '__main__':
     bot.remove_webhook()

@@ -152,3 +152,16 @@ def delete_tag(tag_id):
 def create_tag(name, user_id):
     execute('INSERT INTO `category`(`name`, `user_id`) VALUES (%(p)s, %(p)s)', name, user_id, commit=True)
     return execute('SELECT * FROM `category` WHERE `user_id`=%(p)s ORDER BY `id` DESC LIMIT 1', user_id)[0]
+
+def get_statistics():
+    return execute('SELECT count(*), '
+                   '(SELECT COUNT(*) from `task` WHERE active=1), '
+                   '(SELECT COUNT(*) FROM `task` where active = 0) '
+                   'FROM `task`', commit=True)
+
+def personal_rating(user_id):
+    return execute('SELECT count(*), '
+                   '(SELECT COUNT(*) from `task` WHERE user_id=%(p)s AND active=1), '
+                   '(SELECT COUNT(*) FROM `task` WHERE user_id=%(p)s AND active = 0 AND '
+                   '(remind_date < CURRENT_DATE or (remind_date = CURRENT_DATE AND remind_time < CURRENT_TIME))) '
+                   'FROM `task` where user_id=%(p)s', user_id, user_id, user_id, commit=True)

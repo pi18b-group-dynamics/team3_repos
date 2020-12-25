@@ -9,7 +9,7 @@ def menu():
     markup_row.row(button_text['add_record'])
     markup_row.row(button_text['settings'], button_text['archive_record'])
     markup_row.row(button_text['my_record'])
-
+    markup_row.row(button_text['statistics'], button_text['rating'])
     return markup_row
 
 
