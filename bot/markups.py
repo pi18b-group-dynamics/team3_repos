@@ -9,7 +9,7 @@ def menu():
     markup_row.row(button_text['add_record'])
     markup_row.row(button_text['settings'], button_text['archive_record'])
     markup_row.row(button_text['my_record'])
-    markup_row.row(button_text['statistics'], button_text['rating'])
+
     return markup_row
 
 
@@ -45,10 +45,13 @@ def task_menu(task):
                                         callback_data=inline_conf.task + 'invite_' + str(task['id']))
     back = types.InlineKeyboardButton(button_text['to_home'],
                                       callback_data=inline_conf.task + 'back_' + str(task['id']))
+    tittle = types.InlineKeyboardButton(button_text['tittle'],
+                                      callback_data=inline_conf.task + 'tittle_' + str(task['id']))
 
     inline_key.row(favorite)
     inline_key.row(closed, invite)
     inline_key.row(remind, tags)
+    inline_key.row(tittle)
     inline_key.row(delete)
     inline_key.row(back)
 
@@ -75,11 +78,21 @@ def get_tag_page(tag_id):
 
     return inline_key
 
+def search_by_task():
+    inline_key = types.InlineKeyboardMarkup()
+    search = types.InlineKeyboardButton(button_text['search'], callback_data=inline_conf.task + 'search_0123134141414')
+    inline_key.row(search)
+    return inline_key
 
 def task_list_menu(task_list):
     inline_key = types.InlineKeyboardMarkup()
     for data in task_list:
-        task = types.InlineKeyboardButton(data['header'], callback_data=inline_conf.task + 'view_' + str(data['id']))
+        text = ''
+        if data['active'] == 1:
+            text += '❌ Не выполнено'
+        else:
+            text += '✅ Выполнено'
+        task = types.InlineKeyboardButton(data['header'] + text, callback_data=inline_conf.task + 'view_' + str(data['id']))
         inline_key.row(task)
     return inline_key
 

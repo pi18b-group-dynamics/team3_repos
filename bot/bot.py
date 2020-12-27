@@ -11,8 +11,6 @@ import config_inline as inline_conf
 import markups as mark_conf
 from config_text import msg_text, button_text, create_task_text, create_tag_text, timer_task
 
-import base64
-
 bot = telebot.TeleBot(config.BOT_TOKEN)
 calendar_1 = CallbackData("calendar_1", "action", "year", "month", "day")
 
@@ -71,6 +69,9 @@ def message_text_handler(message):
 
     elif message.text == button_text['archive_record']:
         task_list = util.get_task_list_by_user(message.from_user.id)
+        msg = bot.send_message(message.from_user.id, msg_text['search_by_task'], reply_markup=mark_conf.search_by_task())
+        bot.register_next_step_handler(msg, search_task_name)
+
         bot.send_message(message.from_user.id, msg_text['chose_task'], reply_markup=mark_conf.task_list_menu(task_list))
     elif message.text == button_text['settings']:
         bot.send_message(message.from_user.id, msg_text['settings'], reply_markup=mark_conf.settings_menu())
@@ -81,16 +82,41 @@ def message_text_handler(message):
         msg = bot.send_message(message.from_user.id, msg_text['input_fullname'],
                                reply_markup=mark_conf.create_custom_button(button_text['cancel']))
         bot.register_next_step_handler(msg, input_fullname)
-    elif message.text == button_text['statistics']:
-        statistics = util.get_statistics()
-        bot.send_message(message.from_user.id, f'Всего напоминаний: {statistics[0]}\nВыполненных: {statistics[1]}\n'
-                                               f'Невыполненных: {statistics[2]}\n', reply_markup=mark_conf.menu())
-    elif message.text == button_text['rating']:
-        rating = util.personal_rating()
-        bot.send_message(message.from_user.id, f'Всего напоминаний: {rating[0]}\nВыполненных: {rating[1]}\n'
-                                               f'Просроченных: {rating[2]}\n', reply_markup=mark_conf.menu())
     else:
         bot.send_message(message.from_user.id, msg_text['restart_system'], reply_markup=mark_conf.menu())
+
+def search_task_name(message):
+    if message.text == button_text['cancel']:
+        bot.send_message(message.from_user.id, 'Отмена поиска', reply_markup=mark_conf.menu())
+
+        msg = bot.send_message(message.from_user.id, msg_text['search_by_task'],
+                               reply_markup=mark_conf.search_by_task())
+        bot.register_next_step_handler(msg, search_task_name)
+        print('sya')
+        return
+
+    task_list = util.get_task_list_by_user_where_name(message.from_user.id, message.text)
+    if task_list:
+        bot.send_message(message.from_user.id, msg_text['chose_task'], reply_markup=mark_conf.task_list_menu(task_list))
+    else:
+        bot.send_message(message.from_user.id, msg_text['task_not_found'], reply_markup=mark_conf.menu())
+
+
+message_id = -1
+def change_task_name(message):
+    if message.text == button_text['cancel']:
+        bot.send_message(message.from_user.id, 'Отмена изменения')
+
+        task_list = util.get_task_list_by_user(message.from_user.id, not_closed=True)
+        if task_list:
+            bot.send_message(message.from_user.id, msg_text['chose_task'],
+                             reply_markup=mark_conf.task_list_menu(task_list))
+        else:
+            bot.send_message(message.from_user.id, msg_text['task_not_found'], reply_markup=mark_conf.menu())
+        return
+    if int(message_id) >= 0:
+        util.change_tittle_task(message_id, message.text)
+        bot.send_message(message.from_user.id, 'Напоминалка изменена ;)')
 
 
 def input_task_name(message):
@@ -114,17 +140,28 @@ def input_fullname(message):
     util.update_user_fullname(message.from_user.id, message.text)
     bot.send_message(message.from_user.id, 'Имя изменено', reply_markup=mark_conf.menu())
 
-
 # #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-# EDIT TASK #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 @bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.task))
 def task_edit(call):
     bot.delete_message(call.from_user.id, call.message.message_id)
     res = call.data.split('_')
     task_id = res[2]
+    print(res[1])
     if res[1] == 'view':
         task = util.get_task_by_id(task_id)
         bot.send_message(call.from_user.id, create_task_text(task), reply_markup=mark_conf.task_menu(task),
                          parse_mode='HTML')
+        return
+    elif res[1] == 'tittle':
+        msg = bot.send_message(call.from_user.id, 'Новый заголовок',
+                         reply_markup=mark_conf.create_custom_button(button_text['cancel']))
+        bot.register_next_step_handler(msg, change_task_name)
+        global message_id
+        message_id = task_id
+        return
+    elif res[1] == 'search':
+        bot.send_message(call.from_user.id, msg_text['input_task_name'],
+                         reply_markup=mark_conf.create_custom_button(button_text['cancel']))
         return
     elif res[1] == 'tags':
         # Удаляем словарь. если он уже существоватл
@@ -180,10 +217,8 @@ def task_edit(call):
         bot.send_message(call.from_user.id, 'Напоминалка удалено ;)')
 
     elif res[1] == 'invite':
-        link = f'https://t.me/bot?start={create_referral_link(task_id)}'
-        bot.send_message(call.from_user_id, f'{msg_text["invite_link"]}{link}')
+        # TODO доделать интеграцию с гугл диском или др. сервисами
         return
-
     elif res[1] == 'back':
         bot.send_message(call.from_user.id, msg_text['back'], parse_mode='HTML')
         return
@@ -409,11 +444,6 @@ def time_plus(time, timedelta):
     end = start + timedelta
     return end.time()
 
-def create_referral_link(task_id):
-    return base64.b64encode(task_id.encode('UTF-8')).decode('UTF-8')
-
-def decode_referral_link(link):
-    return base64.b64encode(link.encode('UTF-8')).decode('UTF-8')
 
 if __name__ == '__main__':
     bot.remove_webhook()
